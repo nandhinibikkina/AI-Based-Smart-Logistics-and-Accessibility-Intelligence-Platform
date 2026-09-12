@@ -1,19 +1,23 @@
-// Local, deterministic route analysis engine for NER-LINK AI.
-// No external APIs — all values are computed from the form inputs using
-// fixed baselines calibrated to the Guwahati -> Tawang reference case.
+// Dynamic AI route analysis engine for RouteX AI (NER-LINK AI).
+// Generates location-specific, explainable route recommendations for any NER Origin -> Destination pair.
 
-export type RouteId = 'A' | 'B' | 'C';
+import { mapLocations, type MapLocation } from './sampleData';
+
+export type RouteCategory = 'Fastest' | 'Safest' | 'Balanced';
 export type RiskLevel = 'Low' | 'Medium' | 'High';
 export type Priority = 'Normal' | 'High' | 'Emergency';
 
 export interface RouteOption {
-  id: RouteId;
+  id: string; // Unique ID e.g. "route-guwahati-tawang-fastest"
+  category: RouteCategory;
   name: string;
+  distanceKm: number;
   timeMinutes: number;
   cost: number;
   riskScore: number;
   riskLevel: RiskLevel;
   accessibility: number;
+  routeScore: number; // Explainable score (0-100)
   explanation: string;
 }
 
@@ -36,11 +40,11 @@ export interface LocationAccessibility {
 
 export interface RouteAnalysis {
   routes: RouteOption[];
-  recommendedId: RouteId;
+  recommendedId: string;
   recommendationReason: string;
   riskCategories: RiskCategory[];
   overallRisk: number;
-  alternativeId: RouteId;
+  alternativeId: string;
   delayReductionPct: number;
   riskDifference: number;
   accessibility: LocationAccessibility[];
@@ -55,8 +59,7 @@ export interface RouteRequest {
   priority: Priority;
 }
 
-// Base accessibility scores per NER city (0-100). The four values flagged in
-// the spec are fixed; the rest are reasonable estimates for the prototype.
+// Base accessibility scores per NER city (0-100)
 const locationAccessibility: Record<string, number> = {
   Guwahati: 84,
   Dispur: 84,
@@ -68,6 +71,26 @@ const locationAccessibility: Record<string, number> = {
   Aizawl: 79,
   Agartala: 82,
   Kohima: 70,
+  Dimapur: 86,
+  Tezpur: 85,
+  Bomdila: 64,
+};
+
+// Terrain difficulty score per location (0-100, higher = more mountainous/difficult)
+const terrainDifficulty: Record<string, number> = {
+  Tawang: 88,
+  Bomdila: 75,
+  Kohima: 72,
+  Gangtok: 68,
+  Aizawl: 62,
+  Imphal: 52,
+  Shillong: 42,
+  Itanagar: 38,
+  Dimapur: 22,
+  Tezpur: 20,
+  Agartala: 18,
+  Guwahati: 16,
+  Dispur: 16,
 };
 
 const accessibilityFactorOffsets: { label: string; offset: number }[] = [
@@ -79,41 +102,24 @@ const accessibilityFactorOffsets: { label: string; offset: number }[] = [
   { label: 'Travel Time', offset: 6 },
 ];
 
-const routeBases: {
-  id: RouteId;
-  name: string;
-  time: number;
-  cost: number;
-  risk: number;
-  acc: number;
-}[] = [
-  { id: 'A', name: 'Route A — Direct Mountain Pass', time: 400, cost: 8900, risk: 72, acc: 62 },
-  { id: 'B', name: 'Route B — Valley Corridor', time: 435, cost: 7850, risk: 22, acc: 86 },
-  { id: 'C', name: 'Route C — Lowland Detour', time: 485, cost: 6900, risk: 45, acc: 71 },
-];
-
-// Baseline reference: Guwahati (84) -> Tawang (58), 250 kg, 4x4.
-const BASE_DIFFICULTY = 29;
-const BASE_WEIGHT = 250;
-
-const vehicleRisk: Record<string, number> = {
-  '4x4': 1.0,
+const vehicleRiskMultiplier: Record<string, number> = {
+  '4x4': 0.88,
   Van: 1.05,
-  'Mini Truck': 1.12,
-  Truck: 1.2,
+  'Mini Truck': 1.15,
+  Truck: 1.30,
 };
 
-const vehicleAcc: Record<string, number> = {
-  '4x4': 1.0,
-  Van: 0.98,
-  'Mini Truck': 0.95,
-  Truck: 0.9,
+const vehicleSpeedMultiplier: Record<string, number> = {
+  '4x4': 1.10,
+  Van: 1.0,
+  'Mini Truck': 0.92,
+  Truck: 0.82,
 };
 
 const priorityWeights: Record<Priority, { s: number; a: number; t: number; c: number }> = {
   Normal: { s: 0.25, a: 0.25, t: 0.25, c: 0.25 },
-  High: { s: 0.3, a: 0.25, t: 0.3, c: 0.15 },
-  Emergency: { s: 0.35, a: 0.2, t: 0.35, c: 0.1 },
+  High: { s: 0.30, a: 0.25, t: 0.30, c: 0.15 },
+  Emergency: { s: 0.35, a: 0.20, t: 0.35, c: 0.10 },
 };
 
 const clamp = (v: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
@@ -144,30 +150,41 @@ export function getLocationAccessibility(name: string): LocationAccessibility {
   return { name, overall, factors };
 }
 
-function routeExplanation(route: RouteOption, req: RouteRequest): string {
-  const reasons: string[] = [];
-  if (route.riskLevel === 'Low') reasons.push('the lowest risk profile');
-  else if (route.riskLevel === 'High') reasons.push('a direct but higher-risk path');
-  else reasons.push('a moderate risk profile');
+// Calculate Haversine distance in km between two NER coordinates
+function calculateGeospatialDistance(fromName: string, toName: string): number {
+  const locA = mapLocations.find((l) => l.name.toLowerCase() === fromName.toLowerCase());
+  const locB = mapLocations.find((l) => l.name.toLowerCase() === toName.toLowerCase());
 
-  if (route.accessibility >= 80) reasons.push('strong accessibility');
-  else if (route.accessibility < 65) reasons.push('limited accessibility for heavy vehicles');
+  if (!locA || !locB) return 250;
 
-  if (route.id === 'A') reasons.push(`fastest option for ${req.vehicle.toLowerCase()}s`);
-  if (route.id === 'C') reasons.push('most economical corridor');
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const R = 6371; // Earth's radius in km
+  const dLat = toRad(locB.lat - locA.lat);
+  const dLng = toRad(locB.lng - locA.lng);
+  const lat1 = toRad(locA.lat);
+  const lat2 = toRad(locB.lat);
 
-  return `Offers ${reasons.join(', ')} between ${req.from} and ${req.to}.`;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const straightKm = R * c;
+
+  // Mountain road multiplier for NER terrain (~1.4x straight distance)
+  return Math.round(straightKm * 1.4);
+}
+
+function slugify(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
 function buildRiskCategories(
   overallRisk: number,
   difficulty: number,
   destinationAcc: number,
-  routeId: RouteId,
+  routeCategory: RouteCategory,
 ): RiskCategory[] {
-  // Calibrated so the reference case (Route B, risk 22, difficulty 29) yields
-  // the spec's example category scores.
-  const catBase: { name: string; base: number; riskWeight: number; terrainWeight: number; connWeight: number }[] = [
+  const catBase = [
     { name: 'Weather Risk', base: 25, riskWeight: 0.5, terrainWeight: 0.5, connWeight: 0 },
     { name: 'Road Risk', base: 35, riskWeight: 0.6, terrainWeight: 0.4, connWeight: 0 },
     { name: 'Landslide Risk', base: 18, riskWeight: 0.4, terrainWeight: 0.6, connWeight: 0 },
@@ -176,12 +193,15 @@ function buildRiskCategories(
     { name: 'Delay Risk', base: 28, riskWeight: 0.7, terrainWeight: 0.3, connWeight: 0 },
   ];
 
-  const riskRatio = overallRisk / 22;
-  const terrainRatio = difficulty / BASE_DIFFICULTY;
-  const connRatio = (100 - destinationAcc) / (100 - 58);
+  const riskRatio = overallRisk / 35;
+  const terrainRatio = difficulty / 30;
+  const connRatio = (100 - destinationAcc) / 30;
 
-  // Small stable per-route adjustment so the three routes differ visibly.
-  const routeBias: Record<RouteId, number> = { A: 12, B: 0, C: 6 };
+  const bias: Record<RouteCategory, number> = {
+    Fastest: 10,
+    Safest: -12,
+    Balanced: 0,
+  };
 
   return catBase.map((c) => {
     const raw =
@@ -189,101 +209,171 @@ function buildRiskCategories(
       (c.riskWeight * riskRatio +
         c.terrainWeight * terrainRatio +
         c.connWeight * connRatio) +
-      routeBias[routeId];
+      bias[routeCategory];
     const score = clamp(round(raw));
     return { name: c.name, score, level: riskLevelFromScore(score) };
   });
 }
 
+// Generate dynamic 3-route alternatives for ANY given origin-destination pair
 export function analyzeRoute(req: RouteRequest): RouteAnalysis {
+  if (!req.from || !req.to) {
+    throw new Error('Origin and destination are required.');
+  }
+
+  if (req.from.trim().toLowerCase() === req.to.trim().toLowerCase()) {
+    throw new Error('Origin and destination cannot be the same location.');
+  }
+
+  const baseDistance = calculateGeospatialDistance(req.from, req.to);
+
+  const difficultyFrom = terrainDifficulty[req.from] ?? 30;
+  const difficultyTo = terrainDifficulty[req.to] ?? 30;
+  const avgTerrain = (difficultyFrom + difficultyTo) / 2;
+
   const accFrom = locationAccessibility[req.from] ?? 75;
   const accTo = locationAccessibility[req.to] ?? 75;
   const avgAcc = (accFrom + accTo) / 2;
-  const difficulty = 100 - avgAcc;
-  const terrainFactor = difficulty / BASE_DIFFICULTY;
-  const weightFactor = req.weight / BASE_WEIGHT;
-  const vRisk = vehicleRisk[req.vehicle] ?? 1.1;
-  const vAcc = vehicleAcc[req.vehicle] ?? 0.95;
 
-  const routes: RouteOption[] = routeBases.map((b) => {
-    const timeMinutes = b.time * (0.85 + 0.15 * terrainFactor) * (1 + 0.0006 * (req.weight - BASE_WEIGHT));
-    const cost = b.cost * (0.7 + 0.3 * terrainFactor) * (0.5 + 0.5 * weightFactor);
-    const riskScore = clamp(
-      b.risk * (0.6 + 0.4 * terrainFactor) * vRisk * (1 + 0.0008 * (req.weight - BASE_WEIGHT)),
-    );
-    const accessibility = clamp(b.acc * (1.1 - 0.1 * terrainFactor) * vAcc);
-    const route: RouteOption = {
-      id: b.id,
-      name: b.name,
-      timeMinutes,
-      cost,
-      riskScore: round(riskScore),
-      riskLevel: riskLevelFromScore(riskScore),
-      accessibility: round(accessibility),
-      explanation: '',
-    };
-    route.explanation = routeExplanation(route, req);
-    return route;
-  });
+  const vRisk = vehicleRiskMultiplier[req.vehicle] ?? 1.0;
+  const vSpeed = vehicleSpeedMultiplier[req.vehicle] ?? 1.0;
+  const weightFactor = 1 + ((req.weight - 250) / 1000) * 0.2;
 
-  // Normalised scoring (higher is better) across the three routes.
-  const times = routes.map((r) => r.timeMinutes);
-  const costs = routes.map((r) => r.cost);
-  const tMin = Math.min(...times);
-  const tMax = Math.max(...times);
-  const cMin = Math.min(...costs);
-  const cMax = Math.max(...costs);
-  const normTime = (t: number) => (tMax === tMin ? 100 : 100 * (1 - (t - tMin) / (tMax - tMin)));
-  const normCost = (c: number) => (cMax === cMin ? 100 : 100 * (1 - (c - cMin) / (cMax - cMin)));
+  const fromSlug = slugify(req.from);
+  const toSlug = slugify(req.to);
+
+  // 1. FASTEST ROUTE
+  const fastestDist = Math.round(baseDistance * 0.95);
+  const fastestBaseSpeed = 50 * vSpeed * (1 - avgTerrain * 0.003);
+  const fastestTimeMins = Math.round((fastestDist / Math.max(25, fastestBaseSpeed)) * 60 * weightFactor);
+  const fastestRisk = clamp(round(avgTerrain * 0.85 * vRisk * weightFactor + 15));
+  const fastestAcc = clamp(round(avgAcc * 0.92));
+  const fastestCost = Math.round(fastestDist * 18.5 * weightFactor);
+
+  // 2. SAFEST ROUTE
+  const safestDist = Math.round(baseDistance * 1.15); // Low-risk valley bypass
+  const safestBaseSpeed = 42 * vSpeed * (1 - avgTerrain * 0.002);
+  const safestTimeMins = Math.round((safestDist / Math.max(25, safestBaseSpeed)) * 60 * weightFactor);
+  const safestRisk = clamp(round(avgTerrain * 0.40 * vRisk + 5));
+  const safestAcc = clamp(round(avgAcc * 1.08));
+  const safestCost = Math.round(safestDist * 16.0 * weightFactor);
+
+  // 3. BALANCED ROUTE
+  const balancedDist = Math.round(baseDistance * 1.05);
+  const balancedBaseSpeed = 46 * vSpeed * (1 - avgTerrain * 0.0025);
+  const balancedTimeMins = Math.round((balancedDist / Math.max(25, balancedBaseSpeed)) * 60 * weightFactor);
+  const balancedRisk = clamp(round(avgTerrain * 0.60 * vRisk + 10));
+  const balancedAcc = clamp(round(avgAcc * 1.0));
+  const balancedCost = Math.round(balancedDist * 14.2 * weightFactor);
+
+  const times = [fastestTimeMins, safestTimeMins, balancedTimeMins];
+  const costs = [fastestCost, safestCost, balancedCost];
+  const minTime = Math.min(...times);
+  const maxTime = Math.max(...times);
+  const minCost = Math.min(...costs);
+  const maxCost = Math.max(...costs);
+
+  const normTime = (t: number) => (maxTime === minTime ? 100 : 100 * (1 - (t - minTime) / (maxTime - minTime + 0.001)));
+  const normCost = (c: number) => (maxCost === minCost ? 100 : 100 * (1 - (c - minCost) / (maxCost - minCost + 0.001)));
   const w = priorityWeights[req.priority];
 
-  const scores = routes.map((r) => ({
-    id: r.id,
-    total:
-      (100 - r.riskScore) * w.s +
-      r.accessibility * w.a +
-      normTime(r.timeMinutes) * w.t +
-      normCost(r.cost) * w.c,
-  }));
+  const calcScore = (risk: number, acc: number, time: number, cost: number) =>
+    round((100 - risk) * w.s + acc * w.a + normTime(time) * w.t + normCost(cost) * w.c);
 
-  const ranked = [...scores].sort((a, b) => b.total - a.total);
+  const rawRoutes: { category: RouteCategory; name: string; dist: number; time: number; cost: number; risk: number; acc: number }[] = [
+    {
+      category: 'Fastest',
+      name: `Route 1 – Fastest Route (${req.from} → ${req.to} Express)`,
+      dist: fastestDist,
+      time: fastestTimeMins,
+      cost: fastestCost,
+      risk: fastestRisk,
+      acc: fastestAcc,
+    },
+    {
+      category: 'Safest',
+      name: `Route 2 – Safest Corridor (${req.from} → ${req.to} Low-Risk Bypass)`,
+      dist: safestDist,
+      time: safestTimeMins,
+      cost: safestCost,
+      risk: safestRisk,
+      acc: safestAcc,
+    },
+    {
+      category: 'Balanced',
+      name: `Route 3 – Balanced Highway (${req.from} → ${req.to} Regional Link)`,
+      dist: balancedDist,
+      time: balancedTimeMins,
+      cost: balancedCost,
+      risk: balancedRisk,
+      acc: balancedAcc,
+    },
+  ];
+
+  const routes: RouteOption[] = rawRoutes.map((r) => {
+    const routeScore = calcScore(r.risk, r.acc, r.time, r.cost);
+    const riskLevel = riskLevelFromScore(r.risk);
+    const id = `route-${fromSlug}-${toSlug}-${slugify(r.category)}`;
+
+    let explanation = '';
+    if (r.category === 'Fastest') {
+      explanation = `Offers the fastest travel time (${formatTime(r.time)}) via direct express corridor between ${req.from} and ${req.to}.`;
+    } else if (r.category === 'Safest') {
+      explanation = `Provides the lowest risk score (${r.risk}/100) and highest road stability (${r.acc}/100 accessibility) avoiding high-risk mountain passes.`;
+    } else {
+      explanation = `Delivers optimal cost-efficiency (${formatCost(r.cost)}) with a balanced profile of safety, accessibility, and travel speed.`;
+    }
+
+    return {
+      id,
+      category: r.category,
+      name: r.name,
+      distanceKm: r.dist,
+      timeMinutes: r.time,
+      cost: r.cost,
+      riskScore: r.risk,
+      riskLevel,
+      accessibility: r.acc,
+      routeScore,
+      explanation,
+    };
+  });
+
+  // Ranking & Recommendation logic
+  const ranked = [...routes].sort((a, b) => b.routeScore - a.routeScore);
   const recommendedId = ranked[0].id;
   const recommended = routes.find((r) => r.id === recommendedId)!;
+  const alternativeId = ranked[1].id;
+  const alternative = routes.find((r) => r.id === alternativeId)!;
 
   const reasonClauses: Record<Priority, string> = {
-    Emergency: 'it offers the best combination of safety and travel speed for an urgent delivery',
-    High: 'it provides the best balance of safety, travel time and cost for a high-priority shipment',
-    Normal: 'it provides the best balance of safety, accessibility, time and cost',
+    Emergency: 'it offers the fastest transit time and critical safety reliability for emergency cargo',
+    High: 'it balances transit speed, safety score and cost for high-priority logistics',
+    Normal: 'it provides the optimal balance of safety score, accessibility, travel time and cost efficiency',
   };
-  const recommendationReason = `${recommended.name} is recommended because ${reasonClauses[req.priority]}.`;
+  const recommendationReason = `${recommended.name} is recommended because ${reasonClauses[req.priority]}. Score: ${recommended.routeScore}/100.`;
 
   const riskCategories = buildRiskCategories(
     recommended.riskScore,
-    difficulty,
+    avgTerrain,
     accTo,
-    recommendedId,
+    recommended.category,
   );
   const overallRisk = round(
     riskCategories.reduce((sum, c) => sum + c.score, 0) / riskCategories.length,
   );
 
-  // Alternative = second-best by recommendation score.
-  const alternativeId = ranked[1].id;
-  const alternative = routes.find((r) => r.id === alternativeId)!;
-
-  const recDelay = riskCategories.find((c) => c.name === 'Delay Risk')!.score;
+  const recDelay = riskCategories.find((c) => c.name === 'Delay Risk')?.score || 25;
   const altDelayCategories = buildRiskCategories(
     alternative.riskScore,
-    difficulty,
+    avgTerrain,
     accTo,
-    alternativeId,
+    alternative.category,
   );
-  const altDelay = altDelayCategories.find((c) => c.name === 'Delay Risk')!.score;
-
+  const altDelay = altDelayCategories.find((c) => c.name === 'Delay Risk')?.score || 30;
   const delayReductionPct = recDelay === 0 ? 0 : round(((recDelay - altDelay) / recDelay) * 100);
   const riskDifference = alternative.riskScore - recommended.riskScore;
 
-  // Accessibility intelligence: the four spec cities plus origin & destination.
   const accessibilityNames = Array.from(
     new Set(['Tawang', 'Shillong', 'Gangtok', 'Itanagar', req.from, req.to]),
   );

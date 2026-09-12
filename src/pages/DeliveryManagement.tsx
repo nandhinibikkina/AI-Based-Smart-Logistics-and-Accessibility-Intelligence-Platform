@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Package, Eye, MapPin, RefreshCw, X } from 'lucide-react';
 import Badge from '@/components/Badge';
 import LiveMap from '@/components/LiveMap';
-import { sampleRoutes } from '@/lib/sampleData';
 import {
   deliveryStatusFlow,
   deliveryStatusTone,
@@ -13,7 +12,7 @@ import {
 import { useDeliveries } from '@/store/DeliveriesContext';
 import { navigate } from '@/hooks/useHashRoute';
 
-const cols = ['Delivery ID', 'From', 'To', 'Type', 'Weight', 'Vehicle', 'Priority', 'Status', 'ETA', 'Risk', 'Cost', 'Actions'];
+const cols = ['Delivery ID', 'Order ID', 'From', 'To', 'Type', 'Weight', 'Vehicle', 'Priority', 'Status', 'ETA', 'Risk', 'Cost', 'Actions'];
 
 export default function DeliveryManagement() {
   const { deliveries, updateDeliveryStatus } = useDeliveries();
@@ -28,10 +27,8 @@ export default function DeliveryManagement() {
 
   const startTracking = (d: Delivery) => {
     setTracking(null);
-    navigate('live-map');
-    window.setTimeout(() => {
-      window.location.hash = `live-map?deliveryId=${d.id}`;
-    }, 0);
+    const targetId = d.orderId || d.id;
+    navigate(`live-map?orderId=${targetId}`);
   };
 
   return (
@@ -65,8 +62,9 @@ export default function DeliveryManagement() {
       </div>
 
       <section className="mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-5 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">All Deliveries</h2>
+        <div className="border-b border-slate-200 px-5 py-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">All Active &amp; Planned Deliveries ({deliveries.length})</h2>
+          <span className="text-xs text-slate-500 font-medium">Persisted in Local Shared State</span>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -86,7 +84,8 @@ export default function DeliveryManagement() {
             <tbody className="divide-y divide-slate-100">
               {deliveries.map((d) => (
                 <tr key={d.id} className="transition-colors hover:bg-slate-50">
-                  <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">{d.id}</td>
+                  <td className="whitespace-nowrap px-4 py-3 font-bold text-slate-900">{d.id}</td>
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-bold text-teal-700">{d.orderId || '—'}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-600">{d.from}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-600">{d.to}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-600">{d.type}</td>
@@ -111,7 +110,7 @@ export default function DeliveryManagement() {
                       </button>
                       <button
                         onClick={() => startTracking(d)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-teal-700 bg-teal-50 transition-colors hover:bg-teal-100"
                       >
                         <MapPin className="h-3.5 w-3.5" /> Track
                       </button>
@@ -132,44 +131,60 @@ export default function DeliveryManagement() {
 
       {/* View modal */}
       {viewing && (
-        <Modal title={`Delivery ${viewing.id}`} onClose={() => setViewing(null)}>
+        <Modal title={`Delivery Record #${viewing.id}`} onClose={() => setViewing(null)}>
           <dl className="grid grid-cols-2 gap-4 text-sm">
-            <Detail label="From" value={viewing.from} />
-            <Detail label="To" value={viewing.to} />
-            <Detail label="Type" value={viewing.type} />
-            <Detail label="Weight" value={viewing.weight} />
-            <Detail label="Vehicle" value={viewing.vehicle} />
-            <Detail label="Priority" value={viewing.priority} />
-            <Detail label="ETA" value={viewing.eta} />
-            <Detail label="Cost" value={viewing.cost} />
+            <Detail label="Delivery ID" value={viewing.id} />
+            <Detail label="Route ID" value={viewing.routeId || viewing.selectedRoute?.id || '—'} />
+            <Detail label="Origin" value={viewing.from} />
+            <Detail label="Destination" value={viewing.to} />
+            <Detail label="Cargo Type" value={viewing.type} />
+            <Detail label="Cargo Weight" value={viewing.weight} />
+            <Detail label="Assigned Vehicle" value={viewing.vehicle} />
+            <Detail label="Priority Level" value={viewing.priority} />
+            <Detail label="Estimated Time (ETA)" value={viewing.eta} />
+            <Detail label="Estimated Cost" value={viewing.cost} />
             <div>
-              <dt className="text-xs font-medium text-slate-500">Status</dt>
+              <dt className="text-xs font-medium text-slate-500">Delivery Status</dt>
               <dd className="mt-1"><Badge tone={deliveryStatusTone(viewing.status)}>{viewing.status}</Badge></dd>
             </div>
             <div>
-              <dt className="text-xs font-medium text-slate-500">Risk</dt>
+              <dt className="text-xs font-medium text-slate-500">Corridor Risk</dt>
               <dd className="mt-1"><Badge tone={riskTone(viewing.risk)}>{viewing.risk}</Badge></dd>
             </div>
             {viewing.selectedRoute && (
               <>
-                <Detail label="Selected Route" value={viewing.selectedRoute.name} />
-                <Detail label="Distance" value={`${viewing.selectedRoute.distance} km`} />
-                <Detail label="Accessibility" value={`${viewing.selectedRoute.accessibilityScore}/100`} />
+                <Detail label="Connected Route Name" value={viewing.selectedRoute.name} />
+                <Detail label="Corridor Distance" value={`${viewing.selectedRoute.distance} km`} />
+                <Detail label="Accessibility Score" value={`${viewing.selectedRoute.accessibilityScore}/100`} />
                 <Detail label="Delay Probability" value={`${viewing.selectedRoute.delayProbability}%`} />
               </>
             )}
           </dl>
+
+          <div className="mt-6 border-t border-slate-200 pt-4 flex gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                const target = viewing;
+                setViewing(null);
+                startTracking(target);
+              }}
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-teal-700"
+            >
+              <MapPin className="h-4 w-4" /> Track on Offline Map
+            </button>
+          </div>
         </Modal>
       )}
 
       {/* Track modal */}
       {tracking && (
-        <Modal title={`Tracking ${tracking.id}`} onClose={() => setTracking(null)} wide>
-          <div className="mb-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-            <Detail label="From" value={tracking.from} />
-            <Detail label="To" value={tracking.to} />
+        <Modal title={`Live Map Tracking — Delivery ${tracking.id}`} onClose={() => setTracking(null)} wide>
+          <div className="mb-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <Detail label="Route" value={`${tracking.from} → ${tracking.to}`} />
             <Detail label="Status" value={tracking.status} />
             <Detail label="ETA" value={tracking.eta} />
+            <Detail label="Vehicle" value={tracking.vehicle} />
           </div>
           <LiveMap
             from={tracking.from}
@@ -177,14 +192,14 @@ export default function DeliveryManagement() {
             highlightLat={tracking.lat}
             highlightLng={tracking.lng}
             highlightLabel={`${tracking.id} — ${tracking.from} → ${tracking.to}`}
-            className="h-[360px]"
+            className="h-[380px]"
           />
         </Modal>
       )}
 
       {/* Update status modal */}
       {updating && (
-        <Modal title={`Update Status — ${updating.id}`} onClose={() => setUpdating(null)}>
+        <Modal title={`Update Delivery Status — ${updating.id}`} onClose={() => setUpdating(null)}>
           <p className="mb-4 text-sm text-slate-600">
             Current status: <Badge tone={deliveryStatusTone(updating.status)}>{updating.status}</Badge>
           </p>

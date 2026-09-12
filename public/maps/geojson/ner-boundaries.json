@@ -1,0 +1,88 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Assam", "state": "AS", "type": "State", "capital": "Dispur / Guwahati", "accessibility": 84 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [89.7, 26.2], [90.5, 26.8], [91.8, 26.9], [93.2, 27.0], [95.0, 27.9], [96.0, 27.8],
+          [95.5, 27.0], [94.5, 26.5], [93.8, 25.8], [92.9, 25.8], [92.5, 24.8], [91.8, 25.1],
+          [89.9, 26.0], [89.7, 26.2]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Arunachal Pradesh", "state": "AR", "type": "State", "capital": "Itanagar", "accessibility": 76 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [91.5, 27.3], [92.0, 28.0], [91.8, 28.5], [93.5, 29.2], [96.0, 29.5], [97.3, 28.2],
+          [96.2, 27.5], [95.0, 27.9], [93.2, 27.0], [91.8, 26.9], [91.5, 27.3]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Meghalaya", "state": "ML", "type": "State", "capital": "Shillong", "accessibility": 88 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [89.8, 25.6], [91.8, 25.9], [92.8, 25.7], [92.8, 25.1], [91.5, 25.1], [89.9, 25.2], [89.8, 25.6]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Manipur", "state": "MN", "type": "State", "capital": "Imphal", "accessibility": 74 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [93.0, 25.6], [94.2, 25.7], [94.8, 25.2], [94.6, 24.0], [93.2, 23.8], [93.0, 24.7], [93.0, 25.6]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Mizoram", "state": "MZ", "type": "State", "capital": "Aizawl", "accessibility": 79 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [92.3, 24.4], [93.2, 24.2], [93.3, 23.0], [92.8, 21.9], [92.2, 22.5], [92.3, 24.4]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Nagaland", "state": "NL", "type": "State", "capital": "Kohima", "accessibility": 70 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [93.3, 25.6], [94.5, 26.6], [95.2, 27.0], [95.3, 26.2], [94.3, 25.6], [93.3, 25.6]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Tripura", "state": "TR", "type": "State", "capital": "Agartala", "accessibility": 82 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [91.1, 24.5], [92.3, 24.4], [92.2, 23.5], [91.7, 23.0], [91.2, 23.4], [91.1, 24.5]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Sikkim", "state": "SK", "type": "State", "capital": "Gangtok", "accessibility": 91 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [88.0, 27.8], [88.9, 28.1], [88.9, 27.1], [88.1, 27.1], [88.0, 27.8]
+        ]]
+      }
+    }
+  ]
+}

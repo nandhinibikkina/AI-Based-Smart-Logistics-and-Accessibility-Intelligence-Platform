@@ -307,7 +307,7 @@ export default function Dashboard() {
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50">
               <tr>
-                {['Delivery ID', 'From', 'To', 'Delivery Type', 'Status', 'ETA', 'Risk'].map((h) => (
+                {['Delivery ID', 'Order ID', 'From', 'To', 'Delivery Type', 'Status', 'ETA', 'Risk', 'Action'].map((h) => (
                   <th
                     key={h}
                     scope="col"
@@ -321,7 +321,8 @@ export default function Dashboard() {
             <tbody className="divide-y divide-slate-100">
               {dashboardDeliveries.map((d) => (
                 <tr key={d.id} className="transition-colors hover:bg-slate-50">
-                  <td className="whitespace-nowrap px-5 py-3.5 font-medium text-slate-900">{d.id}</td>
+                  <td className="whitespace-nowrap px-5 py-3.5 font-bold text-slate-900">{d.id}</td>
+                  <td className="whitespace-nowrap px-5 py-3.5 font-mono text-xs font-bold text-teal-700">{d.orderId || '—'}</td>
                   <td className="whitespace-nowrap px-5 py-3.5 text-slate-600">{d.from}</td>
                   <td className="whitespace-nowrap px-5 py-3.5 text-slate-600">{d.to}</td>
                   <td className="whitespace-nowrap px-5 py-3.5 text-slate-600">{d.type}</td>
@@ -331,6 +332,14 @@ export default function Dashboard() {
                   <td className="whitespace-nowrap px-5 py-3.5 text-slate-600">{d.eta}</td>
                   <td className="whitespace-nowrap px-5 py-3.5">
                     <Badge tone={riskTone(d.risk)}>{d.risk}</Badge>
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-3.5">
+                    <a
+                      href={`#live-map?orderId=${d.orderId || d.id}`}
+                      className="inline-flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-bold text-teal-700 hover:bg-teal-100"
+                    >
+                      <MapPin className="h-3.5 w-3.5" /> Track
+                    </a>
                   </td>
                 </tr>
               ))}

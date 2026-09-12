@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Menu, X, Truck, ChevronRight } from 'lucide-react';
 import type { RouteName } from '@/hooks/useHashRoute';
+import NetworkStatus from '@/components/NetworkStatus';
 
 const links: { label: string; route: RouteName }[] = [
   { label: 'Home', route: 'home' },
@@ -52,7 +53,8 @@ export default function Navbar({ route }: { route: RouteName }) {
           ))}
         </ul>
 
-        <div className="hidden xl:block">
+        <div className="hidden xl:flex items-center gap-3">
+          <NetworkStatus />
           <a
             href="#route-planner"
             className="inline-flex items-center gap-1 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-700"
@@ -61,14 +63,17 @@ export default function Navbar({ route }: { route: RouteName }) {
           </a>
         </div>
 
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="inline-flex items-center justify-center rounded-lg p-2 text-slate-700 transition-colors hover:bg-slate-100 xl:hidden"
-          aria-label="Toggle menu"
-          aria-expanded={open}
-        >
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        <div className="flex items-center gap-2 xl:hidden">
+          <NetworkStatus />
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="inline-flex items-center justify-center rounded-lg p-2 text-slate-700 transition-colors hover:bg-slate-100"
+            aria-label="Toggle menu"
+            aria-expanded={open}
+          >
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </nav>
 
       {open && (

@@ -1,0 +1,37 @@
+{
+  "region": "North-East India",
+  "version": "1.4.0",
+  "states": [
+    "Assam",
+    "Arunachal Pradesh",
+    "Meghalaya",
+    "Manipur",
+    "Mizoram",
+    "Nagaland",
+    "Tripura",
+    "Sikkim"
+  ],
+  "logisticsHubs": [
+    "Guwahati",
+    "Tawang",
+    "Shillong",
+    "Imphal",
+    "Gangtok",
+    "Itanagar",
+    "Aizawl",
+    "Agartala",
+    "Kohima",
+    "Dimapur"
+  ],
+  "locationsCount": 13,
+  "highwaysCount": 7,
+  "storedDataSizeMB": 245,
+  "lastUpdated": "Today",
+  "status": "Available Offline",
+  "tileBoundingBox": {
+    "minLat": 21.5,
+    "maxLat": 29.5,
+    "minLng": 87.5,
+    "maxLng": 97.5
+  }
+}

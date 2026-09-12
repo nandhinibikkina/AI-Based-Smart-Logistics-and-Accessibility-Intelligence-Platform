@@ -1,0 +1,158 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hw-1",
+        "name": "NH27 / NH13 — Guwahati to Tawang Mountain Corridor",
+        "from": "Guwahati",
+        "to": "Tawang",
+        "distanceKm": 440,
+        "type": "High-Risk Corridor",
+        "passes": ["Sela Pass (13,700 ft)", "Bomdila Pass"]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [91.7362, 26.1445],
+          [92.1500, 26.3000],
+          [92.8000, 26.7000],
+          [92.8000, 27.2500],
+          [92.4200, 27.2600],
+          [92.2400, 27.3700],
+          [92.1000, 27.5000],
+          [91.8594, 27.5860]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hw-2",
+        "name": "NH40 — Guwahati to Shillong Expressway Corridor",
+        "from": "Guwahati",
+        "to": "Shillong",
+        "distanceKm": 100,
+        "type": "Primary Highway",
+        "passes": ["Nongpoh Valley"]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [91.7362, 26.1445],
+          [91.8200, 25.9000],
+          [91.8800, 25.7500],
+          [91.8933, 25.5788]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hw-3",
+        "name": "NH27 / NH2 — Guwahati to Imphal via Dimapur & Kohima",
+        "from": "Guwahati",
+        "to": "Imphal",
+        "distanceKm": 485,
+        "type": "Interstate Corridor",
+        "passes": ["Naga Hills", "Kohima Saddle"]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [91.7362, 26.1445],
+          [92.6800, 26.3500],
+          [93.7200, 25.9000],
+          [94.1086, 25.6751],
+          [93.9368, 24.8170]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hw-4",
+        "name": "NH15 / NH415 — Guwahati to Itanagar Corridor",
+        "from": "Guwahati",
+        "to": "Itanagar",
+        "distanceKm": 330,
+        "type": "Capital Connector",
+        "passes": ["Brahmaputra Bridge", "Banderdewa Checkpoint"]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [91.7362, 26.1445],
+          [92.8000, 26.7000],
+          [93.4000, 26.8500],
+          [93.6053, 27.0844]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hw-5",
+        "name": "NH10 — Siliguri to Gangtok Mountain Highway",
+        "from": "Guwahati",
+        "to": "Gangtok",
+        "distanceKm": 540,
+        "type": "Himalayan Corridor",
+        "passes": ["Teesta River Valley", "Rangpo Checkpost"]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [91.7362, 26.1445],
+          [90.5000, 26.5000],
+          [89.5000, 26.7000],
+          [88.6000, 27.1000],
+          [88.6065, 27.3389]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hw-6",
+        "name": "NH6 / NH54 — Shillong to Aizawl Corridor",
+        "from": "Shillong",
+        "to": "Aizawl",
+        "distanceKm": 420,
+        "type": "Mountain Road",
+        "passes": ["Jowai Saddle", "Silchar Valley"]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [91.8933, 25.5788],
+          [92.2000, 25.4500],
+          [92.8000, 24.8200],
+          [92.7176, 23.7271]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hw-7",
+        "name": "NH8 — Agartala to Shillong Interstate Link",
+        "from": "Agartala",
+        "to": "Shillong",
+        "distanceKm": 450,
+        "type": "Border Highway",
+        "passes": ["Churaibari Gate"]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [91.2868, 23.8315],
+          [92.2000, 24.3000],
+          [92.8000, 24.8200],
+          [91.8933, 25.5788]
+        ]
+      }
+    }
+  ]
+}
